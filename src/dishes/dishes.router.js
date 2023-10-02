@@ -11,7 +11,7 @@ router
 .all(methodNotAllowed)
 
 router
-.route(":/dishId")
+.route("/:dishId")
 .put(controller.update)
 .all(methodNotAllowed)
 
