@@ -24,18 +24,13 @@ function list(req, res) {
     };
   }
 
-  function create(req, res){
-    const { data: { name, description, price, image_url } ={}}=req.body
-    const newDish={
-        id: {nextId},
-        name,
-        description,
-        price,
-        image_url,
+  function hasPrice(req, res, next) {
+    const { data: {price} ={}}=req.body
+  
+   if (!(isNaN(price)) || price>=0 ) {
+       next({ status: 400, message: "Dish must have a price that is an integer greater than 0" })
     }
-    dishes.push(newDish)
-    res.status(201).json({ data: newDish })
-
+     return next();
   }
 
   function dishExists(req, res, next){
@@ -50,8 +45,30 @@ function list(req, res) {
     })
   }
 
-  function update(req, res){
-    const dishId =Number(req.params.dishId)
+
+  function read(req, res) {
+    const dishId = Number(req.params.dishId);
+    const foundDish=dishes.find((dish)=>dish.id===dishId)
+  
+    res.json({ data: foundDish });
+  }
+
+  function create(req, res){
+    const { data: { name, description, price, image_url } ={}}=req.body
+    const newDish={
+        id: nextId(),
+        name,
+        description,
+        price,
+        image_url,
+    }
+    dishes.push(newDish)
+    res.status(201).json({ data: newDish })
+
+  }
+
+  function update(req, res, next){
+    const dishId =req.params.dishId
     const foundDish=dishes.find((dish)=>dish.id===dishId)
 
     const { data: { name, description, price, image_url } ={}}=req.body
@@ -61,6 +78,7 @@ function list(req, res) {
     foundDish.image_url=image_url
     res.json({ data: foundDish });
 
+    
   }
 
   module.exports ={
@@ -69,13 +87,16 @@ function list(req, res) {
     bodyDataHas("description"),
     bodyDataHas("price"),
     bodyDataHas("image_url"),
+    hasPrice,
     create],
     update: [bodyDataHas("name"),
     bodyDataHas("description"),
     bodyDataHas("price"),
     bodyDataHas("image_url"),
+    hasPrice,
     dishExists, 
     update],
+    read: [dishExists, read],
 
 
   }
