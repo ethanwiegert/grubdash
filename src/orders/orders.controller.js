@@ -131,15 +131,16 @@ function read(req, res, next){
 }
 
 function checkStatus(req, res, next) {
-    const { data: { status } = {} } = req.body
-  if (!status || status==="") {
-    next({
+  const {data:{status}={}}=req.body
+  const validStatus=["pending", "preparing", "out-for-delivery", "delivered"]
+  if (!status || status==="" || !validStatus.includes(status)) {
+    return next({
       status: 400,
       message: `Order must have a status of pending, preparing, out-for-delivery, delivered`,
     })
   }
-  else if(status==="delivered"){
-      next({
+  else if(res.locals.order.status==="delivered"){
+     return next({
       status: 400,
       message: `A delivered order cannot be changed`,
     })
@@ -147,13 +148,25 @@ function checkStatus(req, res, next) {
   next()
 }
 
+
+
 function destroy(req, res, next) {
   const { orderId } = req.params;
-  const index = orders.findIndex((order) => order.id === Number(orderId));
+  const index = orders.findIndex((order) => order.id === orderId);
   if (index > -1) {
     orders.splice(index, 1);
   }
   res.sendStatus(204);
+}
+
+function checkIfPending(req, res, next) {
+  if(res.locals.order.status!=="pending"){
+     return next({
+      status: 400,
+      message: `An order cannot be deleted unless it is pending.`,
+    })
+  }
+  next()
 }
       
      
@@ -178,5 +191,5 @@ module.exports={
         checkStatus,
         update],
         read: [orderExists, read],
-        delete: [orderExists, destroy],
+        delete: [orderExists,checkIfPending, destroy],
     }
