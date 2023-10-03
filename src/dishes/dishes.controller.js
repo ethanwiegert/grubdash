@@ -35,21 +35,37 @@ function list(req, res) {
     res.status(201).json({ data: newDish });
     }
     
-    function hasPrice(req, res, next) {
-    const { data: { price } = {} } = req.body;
-    if (isNaN(price) || price <= 0) {
-    return next({
-    status: 400,
-    message: "Dish must have a price that is a positive number",
-    });
+    function hasPrice(req, res, next){
+    const {data: {price} = {}} = req.body;
+
+    if(!price){
+        next({
+            status: 400,
+            message: "Dish must include a price",
+        })
     }
-    next();
+    else if(price <= 0){
+        next({
+            status: 400,
+            message: "Dish must have a price greater than 0.",
+        });
     }
+    else if(typeof price != "number"){
+        next({
+            status: 400,
+            message: "The Dish price must be a number.",
+        })
+    }
+
+    return next();
+}
     
     function dishExists(req, res, next) {
     const dishId = req.params.dishId;
     const foundDish = dishes.find((dish) => dish.id === dishId);
+      
     if (foundDish) {
+      res.locals.dish = foundDish;
     return next();
     }
     next({
@@ -58,26 +74,33 @@ function list(req, res) {
     });
     }
     
-    function update(req, res) {
-    const dishId = req.params.dishId;
-    const foundDish = dishes.find((dish) => dish.id === dishId);
-    
-    if (foundDish) {
-    const { data: { name, description, price, image_url } = {} } = req.body;
-    foundDish.name = name;
-    foundDish.description = description;
-    foundDish.price = price;
-    foundDish.image_url = image_url;
-    res.json({ data: foundDish });
-    }
+    function update(req, res, next){
+    const dish = res.locals.dish;
+    const {dishId} = req.params;
+    const {data: {id, name, description, price, image_url} = {}} = req.body;
+
+    if(!id || dishId === id){
+        const updatedDish = {
+            id: dishId,
+            name,
+            description,
+            price,
+            image_url,
+        }
+
+        res.json({data: updatedDish});
     }
 
-  function read(req, res) {
-    const dishId = Number(req.params.dishId);
-    const foundDish=dishes.find((dish)=>dish.id===dishId)
-  
-    res.json({ data: foundDish });
-  }
+    next({
+        status: 400,
+        message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`,
+    })
+}
+
+function read(req, res, next){
+    const dish = res.locals.dish;
+    res.json({data: dish});
+}
 
 
   module.exports ={
@@ -88,12 +111,12 @@ function list(req, res) {
     bodyDataHas("image_url"),
     hasPrice,
     create],
-    update: [bodyDataHas("name"),
+    update: [ dishExists,
+                 hasPrice, 
+      bodyDataHas("name"),
     bodyDataHas("description"),
     bodyDataHas("price"),
     bodyDataHas("image_url"),
-    hasPrice,
-    dishExists, 
     update],
     read: [dishExists, read],
 
